@@ -1,12 +1,12 @@
 opam-version: "2.0"
 synopsis: "A simple protocol dispatcher"
-description: "A middleware to dispatch protocols used by Git"
-maintainer: ["thomas@gazagnaire.org" "romain.calascibetta@gmail.com"]
-authors: "Thomas Gazagnaire"
+description: "A middleware to dispatch protocols"
+maintainer: ["romain.calascibetta@gmail.com"]
+authors: "Romain Calascibetta"
 license: "ISC"
-homepage: "https://github.com/mirage/ocaml-git"
-doc: "https://mirage.github.io/ocaml-git/"
-bug-reports: "https://github.com/mirage/ocaml-git/issues"
+homepage: "https://github.com/dinosaure/mimic"
+doc: "https://dinosaure.github.io/mimic/"
+bug-reports: "https://github.com/dinosaure/mimic/issues"
 depends: [
   "ocaml" {>= "4.08.0"}
   "dune" {>= "2.8"}
@@ -27,4 +27,4 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
-dev-repo: "git+https://github.com/mirage/ocaml-git.git"
+dev-repo: "git+https://github.com/dinosaure/mimic.git"
