@@ -1,7 +1,6 @@
 (executable
  (name test)
  (libraries
-  bigarray-compat
   mimic
   mirage-flow
   result
