@@ -3,8 +3,6 @@
  (libraries
   mimic
   mirage-flow
-  result
-  rresult
   lwt
   lwt.unix
   logs

@@ -8,7 +8,6 @@ let pp_info ppf { name; root } =
   | Root None -> Fmt.pf ppf "<%s>" name
   | Value -> Fmt.pf ppf "%s" name
 
-open Rresult
 module Mirage_protocol = Mirage_protocol
 module Info = struct type 'a t = 'a info end
 module Hmap0 = Hmap.Make (Info)
@@ -108,8 +107,6 @@ end)
 
 type flow = Implicit0.t = private ..
 
-let ( <.> ) f g x = f (g x)
-
 type error = [ `Msg of string | `Not_found | `Cycle ]
 type write_error = [ `Msg of string | `Closed ]
 
@@ -125,22 +122,22 @@ let pp_write_error ppf = function
 let read flow =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
   let open Lwt.Infix in
-  Flow.read flow >|= R.reword_error (R.msg <.> Fmt.to_to_string Flow.pp_error)
+  Flow.read flow >|=
+  Result.map_error (fun fe -> `Msg (Fmt.to_to_string Flow.pp_error fe))
 
 let write flow cs =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
   let open Lwt.Infix in
   Flow.write flow cs >|= function
-  | Error `Closed -> R.error `Closed
-  | Error _ as err ->
-      R.reword_error (R.msg <.> Fmt.to_to_string Flow.pp_write_error) err
+  | Error `Closed -> Error `Closed
+  | Error e -> Error (`Msg (Fmt.to_to_string Flow.pp_write_error e))
   | Ok _ as v -> v
 
 let writev flow css =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
   let open Lwt.Infix in
-  Flow.writev flow css
-  >|= R.reword_error (R.msg <.> Fmt.to_to_string Flow.pp_write_error)
+  Flow.writev flow css >|=
+  Result.map_error (fun fe -> `Msg (Fmt.to_to_string Flow.pp_write_error fe))
 
 let close flow =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in

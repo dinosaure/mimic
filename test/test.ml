@@ -75,12 +75,11 @@ let send = Alcotest.int
 
 let test_input_string =
   Alcotest_lwt.test_case "input string" `Quick @@ fun _sw () ->
-  let open Rresult in
   let open Lwt.Infix in
   let ctx = Mimic.add edn0 ("Hello World!", Bytes.empty) Mimic.empty in
   Mimic.resolve ctx >>= fun flow ->
-  Alcotest.(check bool) "resolve" (R.is_ok flow) true;
-  let flow = Flow.make (R.get_ok flow) in
+  Alcotest.(check bool) "resolve" (Result.is_ok flow) true;
+  let flow = Flow.make (Result.get_ok flow) in
   let buf0 = Cstruct.create 12 in
   let buf1 = Cstruct.create 12 in
   Flow.recv flow buf0 >>= fun res0 ->
@@ -96,13 +95,12 @@ let test_input_string =
 
 let test_output_string =
   Alcotest_lwt.test_case "output string" `Quick @@ fun _sw () ->
-  let open Rresult in
   let open Lwt.Infix in
   let buf = Bytes.create 12 in
   let ctx = Mimic.add edn0 ("", buf) Mimic.empty in
   Mimic.resolve ctx >>= fun flow ->
-  Alcotest.(check bool) "resolve" (R.is_ok flow) true;
-  let flow = Flow.make (R.get_ok flow) in
+  Alcotest.(check bool) "resolve" (Result.is_ok flow) true;
+  let flow = Flow.make (Result.get_ok flow) in
   Flow.send flow (Cstruct.of_string "Hell") >>= fun res0 ->
   Flow.send flow (Cstruct.of_string "o Wo") >>= fun res1 ->
   Flow.send flow (Cstruct.of_string "rld!") >>= fun res2 ->
