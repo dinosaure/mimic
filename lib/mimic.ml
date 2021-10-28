@@ -106,7 +106,6 @@ module Implicit0 = Implicit.Make (struct
 end)
 
 type flow = Implicit0.t = private ..
-
 type error = [ `Msg of string | `Not_found | `Cycle ]
 type write_error = [ `Msg of string | `Closed ]
 
@@ -122,8 +121,8 @@ let pp_write_error ppf = function
 let read flow =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
   let open Lwt.Infix in
-  Flow.read flow >|=
-  Result.map_error (fun fe -> `Msg (Fmt.to_to_string Flow.pp_error fe))
+  Flow.read flow
+  >|= Result.map_error (fun fe -> `Msg (Fmt.to_to_string Flow.pp_error fe))
 
 let write flow cs =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
@@ -136,8 +135,9 @@ let write flow cs =
 let writev flow css =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
   let open Lwt.Infix in
-  Flow.writev flow css >|=
-  Result.map_error (fun fe -> `Msg (Fmt.to_to_string Flow.pp_write_error fe))
+  Flow.writev flow css
+  >|= Result.map_error (fun fe ->
+          `Msg (Fmt.to_to_string Flow.pp_write_error fe))
 
 let close flow =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
@@ -176,8 +176,7 @@ let register :
   value, { flow; protocol }
 
 module type REPR = sig
-  type t
-  type flow += (* XXX(dinosaure): private? *) T of t
+  type t type flow += (* XXX(dinosaure): private? *) T of t
 end
 
 let repr :
@@ -352,8 +351,7 @@ let flow_of_value :
   in
   go (Implicit1.bindings ())
 
-let inf = -1
-and sup = 1
+let inf = -1 and sup = 1
 
 let priority_compare (Edn (k0, _)) (Edn (k1, _)) =
   match (Hmap0.Key.info k0).root, (Hmap0.Key.info k1).root with
