@@ -334,11 +334,11 @@ let unfold : ctx -> (edn list, [> `Cycle ]) result Lwt.t =
   let open Lwt.Infix in
   let rec go ctx acc : Sort.t list -> _ = function
     | [] ->
-      (* XXX(dinosaure): here, we use a stable sort, [List.rev]
-       * is needed to keep a certain topological order - see [sort].
-       * [stable_sort] keeps this order too. *)
-      let acc = List.stable_sort priority_compare (List.rev acc) in
-      Lwt.return_ok acc
+        (* XXX(dinosaure): here, we use a stable sort, [List.rev]
+         * is needed to keep a certain topological order - see [sort].
+         * [stable_sort] keeps this order too. *)
+        let acc = List.stable_sort priority_compare (List.rev acc) in
+        Lwt.return_ok acc
     | Sort.Val (k, v) :: r ->
         Log.debug (fun m -> m "Return a value %a." pp_value k);
         go ctx (Edn (k, v) :: acc) r
