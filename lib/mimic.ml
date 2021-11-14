@@ -299,11 +299,11 @@ let sort bindings =
     | [], _ when progress -> go acc [] later false
     | [], later ->
         (* TODO(dinosaure): check, at least, one root in [acc]. *)
-        Log.warn (fun m ->
+        Log.debug (fun m ->
             m "Found a solution only for: @[<hov>%a@]."
               Fmt.(Dump.list Sort.pp)
               acc);
-        Log.warn (fun m ->
+        Log.debug (fun m ->
             m "Unsolvable values: @[<hov>%a@]." Fmt.(Dump.list pp_fnu) later);
         List.rev acc
     | (Fun (k, args, f) as x) :: xs, _ ->
@@ -367,6 +367,12 @@ let flow_of_value :
             | Error _err -> go r))
   in
   go (Implicit1.bindings ())
+
+type ('a, 'b) refl = Refl : ('a, 'a) refl
+
+let equal : type a b. a value -> b value -> (a, b) refl option =
+ fun a b ->
+  match Hmap0.Key.proof a b with Some Teq -> Some Refl | None -> None
 
 let rec connect : edn list -> (flow, [> error ]) result Lwt.t = function
   | [] -> Lwt.return_error `Not_found
