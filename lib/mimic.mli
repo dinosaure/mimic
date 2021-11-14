@@ -45,6 +45,11 @@ end
 val repr : ('edn, 'flow) protocol -> (module REPR with type t = 'flow)
 val resolve : ctx -> (flow, [> error ]) result Lwt.t
 
+type edn = Edn : 'edn value * 'edn -> edn
+
+val unfold : ctx -> (edn list, [> `Cycle ]) result Lwt.t
+val connect : edn list -> (flow, [> error ]) result Lwt.t
+
 module Merge (A : sig
   val ctx : ctx
 end) (B : sig

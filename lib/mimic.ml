@@ -317,11 +317,28 @@ let sort bindings =
   Log.debug (fun m -> m "Nodes: @[<hov>%a@]." Fmt.(Dump.list pp_fnu) nodes);
   go leafs [] nodes false
 
-let resolve : ctx -> (edn list, [> `Cycle ]) result Lwt.t =
+let inf = -1 and sup = 1
+
+let priority_compare (Edn (k0, _)) (Edn (k1, _)) =
+  match (Hmap0.Key.info k0).root, (Hmap0.Key.info k1).root with
+  | Root (Some p0), Root (Some p1) -> p0 - p1
+  | (Root None | Value), Root (Some _) -> sup
+  | Root (Some _), (Root None | Value) -> inf
+  | Value, Value -> 0
+  | Root None, Root None -> 0
+  | Value, Root None -> sup
+  | Root None, Value -> inf
+
+let unfold : ctx -> (edn list, [> `Cycle ]) result Lwt.t =
  fun ctx ->
   let open Lwt.Infix in
   let rec go ctx acc : Sort.t list -> _ = function
-    | [] -> Lwt.return_ok (List.rev acc)
+    | [] ->
+      (* XXX(dinosaure): here, we use a stable sort, [List.rev]
+       * is needed to keep a certain topological order - see [sort].
+       * [stable_sort] keeps this order too. *)
+      let acc = List.stable_sort priority_compare (List.rev acc) in
+      Lwt.return_ok acc
     | Sort.Val (k, v) :: r ->
         Log.debug (fun m -> m "Return a value %a." pp_value k);
         go ctx (Edn (k, v) :: acc) r
@@ -351,37 +368,25 @@ let flow_of_value :
   in
   go (Implicit1.bindings ())
 
-let inf = -1 and sup = 1
-
-let priority_compare (Edn (k0, _)) (Edn (k1, _)) =
-  match (Hmap0.Key.info k0).root, (Hmap0.Key.info k1).root with
-  | Root (Some p0), Root (Some p1) -> p0 - p1
-  | (Root None | Value), Root (Some _) -> sup
-  | Root (Some _), (Root None | Value) -> inf
-  | Value, Value -> 0
-  | Root None, Root None -> 0
-  | Value, Root None -> sup
-  | Root None, Value -> inf
+let rec connect : edn list -> (flow, [> error ]) result Lwt.t = function
+  | [] -> Lwt.return_error `Not_found
+  | Edn (k, v) :: r -> (
+      let open Lwt.Infix in
+      Log.debug (fun m -> m "Try to instantiate %a." pp_value k);
+      flow_of_value k v >>= function
+      | Ok _ as v -> Lwt.return v
+      | Error _err -> connect r)
 
 let resolve : ctx -> (flow, [> error ]) result Lwt.t =
  fun ctx ->
   let open Lwt.Infix in
-  let rec go : edn list -> _ = function
-    | [] -> Lwt.return_error `Not_found
-    | Edn (k, v) :: r -> (
-        Log.debug (fun m -> m "Try to instantiate %a." pp_value k);
-        flow_of_value k v >>= function
-        | Ok _ as v -> Lwt.return v
-        | Error _err -> go r)
-  in
-  resolve ctx >>= function
+  unfold ctx >>= function
   | Ok lst ->
-      let lst = List.stable_sort priority_compare lst in
       Log.debug (fun m ->
           m "List of endpoints: @[<hov>%a@]"
             Fmt.(Dump.list (fun ppf (Edn (k, _)) -> pp_value ppf k))
             lst);
-      go lst
+      connect lst
   | Error _ as err -> Lwt.return err
 
 let make ~name = Hmap0.Key.create { name; root = Value }
