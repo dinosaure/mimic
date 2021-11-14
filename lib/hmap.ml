@@ -10,8 +10,7 @@
 module Tid = struct type _ t = .. end
 
 module type Tid = sig
-  type t
-  type _ Tid.t += Tid : t Tid.t
+  type t type _ Tid.t += Tid : t Tid.t
 end
 
 type 'a tid = (module Tid with type t = 'a)

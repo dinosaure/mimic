@@ -7,7 +7,6 @@ let blit1 src src_off dst dst_off len =
   Cstruct.blit src 0 dst dst_off len
 
 open Lwt.Infix
-open Rresult
 
 let ( >>? ) = Lwt_result.bind
 
@@ -29,7 +28,7 @@ module Make (Flow : Mirage_flow.S) = struct
 
   let recv flow payload =
     if Ke.Rke.is_empty flow.queue then (
-      Flow.read flow.flow >|= R.reword_error (fun err -> `Error err)
+      Flow.read flow.flow >|= Result.map_error (fun err -> `Error err)
       >>? function
       | `Eof -> Lwt.return_ok `End_of_flow
       | `Data res ->
@@ -47,7 +46,7 @@ module Make (Flow : Mirage_flow.S) = struct
 
   let send flow payload =
     Flow.write flow.flow payload >|= function
-    | Error `Closed -> R.error (`Write_error `Closed)
-    | Error err -> R.error (`Write_error err)
-    | Ok () -> R.ok (Cstruct.length payload)
+    | Error `Closed -> Error (`Write_error `Closed)
+    | Error err -> Error (`Write_error err)
+    | Ok () -> Ok (Cstruct.length payload)
 end
