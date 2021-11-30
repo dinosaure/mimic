@@ -221,11 +221,11 @@ let line_of_queue queue =
   | Some 0 -> Ke.Rke.N.shift_exn queue 1 ; Some ""
   | Some pos ->
     let tmp = Bytes.create pos in
-    Ke.Rke.keep_exn queue ~blit ~length:Bytes.length ~off:0 ~len:pos tmp ;
-    Ke.Rke.shift_exn queue (pos + 1) ;
+    Ke.Rke.N.keep_exn queue ~blit ~length:Bytes.length ~off:0 ~len:pos tmp ;
+    Ke.Rke.N.shift_exn queue (pos + 1) ;
     match Bytes.get tmp (pos - 1) with
     | '\r' -> Some (Bytes.sub_string tmp 0 (pos - 1))
-    | _ -> Some (Bytes.unsafe_to_String tmp)
+    | _ -> Some (Bytes.unsafe_to_string tmp)
 
 let blit src src_off dst dst_off len =
   let src = Cstruct.to_bigarray src in
@@ -246,7 +246,7 @@ let sendline flow fmt =
     Mimic.write flow (Cstruct.of_string str) >>= function
     | Ok _ as v -> Lwt.return v
     | Error err -> Lwt.return_error (R.msgf "%a" Mimic.pp_write_error err) in
-  Fmt.kstrf send (fmt ^^ "\r\n")
+  Fmt.kstr send (fmt ^^ "\r\n")
 ]}
 
 This code is quite simple. It implements logic that is usually available with a
@@ -264,7 +264,7 @@ we don't know and that's the point!
 
 You can compile the code with:
 {[
-$ ocamlfind opt -linkpkg -package mimic,bigstringaf,cstruct,ke \
+$ ocamlfind opt -linkpkg -package rresult,lwt,mimic,bigstringaf,cstruct,ke \
     main.ml
 ]}
 
@@ -280,7 +280,7 @@ So let's start implementing the client as it should be.
 
 {[
 let client ~ctx ic =
-  let rec go flow queue = input_line ic with
+  let rec go flow queue = match input_line ic with
     | line ->
       if ic != stdin then Fmt.pr "> %s\n%!" line ;
       sendline flow "%s" line >>? fun () ->
@@ -363,7 +363,7 @@ However, mimic expects an extension to this interface. Indeed, beyond being
 able to relay the [read] and [write] of your implementations to the
 implementation of your ping-pong protocol, mimic also depends on an
 "instantiation" method. In other words, mimic requires a module respecting
-[Mirage_flow.S]  and a [connect] function: {!Mimic.Mirage_protocol.S}.
+[Mirage_flow.S] and a [connect] function: {!Mimic.Mirage_protocol.S}.
 
 Let's take [mirage-tcpip] as an example. We need to tweak its implementation a
 bit in order to register it with mimic.
@@ -458,7 +458,7 @@ let _0 () = match Sys.argv with
 The code is compilable with
 
 {[
-$ ocamlfind opt -thread -package mimic,bigstringaf,cstruct,ke, \
+$ ocamlfind opt -thread -package rresult,lwt,mimic,bigstringaf,cstruct,ke, \
     tcpip.stack-socket,uri main.ml
 ]}
 
@@ -618,23 +618,22 @@ module TLS = struct
   include Tls_mirage.Make(Tcpip_stack_socket.V4V6.TCP)
 
   type endpoint =
-    Tcpip_stack_socket.V4V6.t
+    Tcpip_stack_socket.V4V6.TCP.t
     * Tls.Config.client * [ `host ] Domain_name.t option
     * Ipaddr.t * int
 
-  let connect (stack, tls, domain_name, ipaddr, port) =
+  let connect (stack, tls, host, ipaddr, port) =
     let open Tcpip_stack_socket.V4V6 in
     TCP.create_connection stack (ipaddr, port)
     >|= R.reword_error (fun err -> `Read err)
     >>? fun flow ->
-    let host = Option.map Domain_name.to_string domain_name in
     client_of_flow tls ?host flow
 end
 
 let tls_edn, tls_protocol = Mimic.register ~priority:10 ~name:"tls"
   (module TLS)
 
-let authenticator ~host:_ _ = Ok None
+let authenticator ?ip:_ ~host:_ _ = Ok None
 let default = Tls.Config.client ~authenticator ()
 
 let tls : Tls.Config.client Mimic.value = Mimic.make ~name:"tls-config"
@@ -683,7 +682,7 @@ let run02 uri ic =
       | _, Ok v -> Mimic.add ipaddr v ctx
       | _ -> ctx in
   let open Tcpip_stack_socket.V4V6 in
-  TCP.conect ~ipv4_only:false ~ipv6_only:false Ipaddr.V4.Prefix.global
+  TCP.connect ~ipv4_only:false ~ipv6_only:false Ipaddr.V4.Prefix.global
     None >>= fun tcp ->
   let ctx = Mimic.add stack tcp ctx in
   client ~ctx ic
@@ -720,6 +719,7 @@ To launch a TLS server, nothing more than:
 As for our client, we need to compile it with:
 {[
 $ ocamlfind opt -thread -linkpkg -package \
+    rresult,lwt,\
     mimic,bigstringaf,cstruct,ke,tcpip.stack-socket,uri,tls-mirage,\
     mirage-crypto-rng.unix main.ml
 $ ./a.out tls://localhost:4343/
@@ -789,7 +789,7 @@ let handler flow =
     | `Close -> Lwt.return_ok ()
     | (`Line "ping") -> sendline flow "pong" >>? fun () -> go flow queue
     | (`Line "pong") -> sendline flow "ping" >>? fun () -> go flow queue
-    | (`Line line) -> sendline flow "%s" line >>? fun () -> flow flow queue in
+    | (`Line line) -> sendline flow "%s" line >>? fun () -> go flow queue in
   go flow queue >>= fun res ->
   Mimic.close flow >>= fun () -> Lwt.return res
 
@@ -860,11 +860,10 @@ module TLS' = struct
     Tls.Config.client * [ `host ] Domain_name.t option
     * Unix.sockaddr
 
-  let connect (tls, domain_name, sockaddr) =
+  let connect (tls, host, sockaddr) =
     TCP'.connect sockaddr
     >|= R.reword_error (fun err -> `Read err)
     >>? fun flow ->
-    let host = Option.map Domain_name.to_string domain_name in
     client_of_flow tls ?host flow
 end
 
@@ -985,7 +984,7 @@ let certificates_of_files cert key =
   let key  = load_file key in
   match X509.Certificate.decode_pem_multiple cert,
         X509.Private_key.decode_pem key with
-  | Ok certs, Ok (`RSA key) -> `Single (certs, key)
+  | Ok certs, Ok key -> `Single (certs, key)
   | _ -> Fmt.failwith "Invalid key or certificate"
 
 let () = match Sys.argv with
