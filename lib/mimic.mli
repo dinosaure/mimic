@@ -91,12 +91,36 @@ val repr : ('edn, 'flow) protocol -> (module REPR with type t = 'flow)
 val resolve : ctx -> (flow, [> error ]) result Lwt.t
 (** [resolve ctx] tries to instantiate a {!type:flow} from the given [ctx]. *)
 
-type edn = Edn : 'edn value * 'edn -> edn
+type edn =
+  | Edn : 'edn value * 'edn -> edn  (** The type of a value and its witness. *)
+
 type (_, _) refl = Refl : ('a, 'a) refl
 
 val equal : 'a value -> 'b value -> ('a, 'b) refl option
+(** [equal a b] returns a proof that [a] and [b] are
+    {i structurally} equal. *)
+
 val unfold : ctx -> (edn list, [> `Cycle ]) result Lwt.t
+(** [unfold ctx] applies any functions available into the given [ctx] and
+    and possible to compute according to available values and return a list
+    of what these functions return.
+
+    It's useful to do an introspection of what [mimic] does when it
+    {!val:resolve}s the given [ctx]. From that and {!val:equal}, the user is
+    able to introspect what [mimic] generated and which protocol it is able
+    to instantiate then.
+
+    {val:resolve} is:
+    {[
+      let resolve ctx =
+        unfold ctx >>= function
+        | Ok lst -> connect lst
+        | Error _ as err -> Lwt.return err
+    ]} *)
+
 val connect : edn list -> (flow, [> error ]) result Lwt.t
+(** [connect values] tries to instantiate a {!type:flow} from given [values]
+    and registered protocols (see {!val:register}). *)
 
 module Merge (A : sig
   val ctx : ctx
