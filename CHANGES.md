@@ -1,3 +1,11 @@
+### 0.0.4 (2021-08-12) Paris - France
+
+- Use `Cstruct.length` instead of `Cstruct.len` (@dinosaure, #2)
+- Remove unnucessary `bigarray-compat` dependency (@hannesm, #3)
+- Remove `rresult` (@hannesm, #4)
+- Be able to introspect values produced by mimic (@dinosaure, #5)
+- Improve documentation (@dinosaure, #6 & #7)
+
 ### 0.0.3 (2021-20-04) Paris - France
 
 - Move the project to https://github.com/dinosaure/mimic (@dinosaure)
