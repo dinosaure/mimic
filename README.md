@@ -27,6 +27,46 @@ MirageOS if you use the `unix` derivation for example.
 something more complex and easy to use at his level - and it's what [paf][paf]
 does for example or [git-unix][git-unix].
 
+## The goal of `mimic`
+
+In the context of MirageOS which has a first stage which decides
+implementation of protocols according to arguments let us to provide a client
+which can work on many contexts:
+- as a simple executable which can use the host TCP/IP stack
+- as a full operating system which integrate its own TCP/IP stack
+- as something else which wants to use something else than the TCP/IP stack
+
+That mostly means that, _de facto_, we can not assert a certain implementation
+of the underlying transmission protocol used by a protocol such as HTTP or
+SMTP. This required abstraction becomes more complexe when we start to think
+about composition of protocols (such as TCP/IP and TLS for instance).
+
+This abstraction, in the context of a client, is not only determined by a
+static application of _functors_ with our implementations. It depends on an
+user's input value which will choose the right transmission protocol. For
+instance:
+- `git@github.com:repo/name` expects TCP/IP + SSH
+- `http://github.com/repo/name` expects TCP/IP + HTTP
+- `git://github.com/repo/name` expects TCP/IP
+- `https://github.com/repo/name` expects TCP/IP + TLS + HTTP
+
+`mimic` gives the opportunity to provide a full implementation of the
+[`Mirage_flow.S`][mirage-flow] interface and require a function to instantiate
+the given transmission protocol (which respects our interface). By this way and
+according to user's input values, `mimic` is able to choose an try to
+instantiate a _certain_ transmission protocol and hide it into an _not-fully_
+abstracted type `Mimic.flow`.
+
+It unlock the ability to implement a protocol such as the Git protocol - or
+something else such as the HTTP protocol. By this way, this implementation is,
+_de facto_ compatible with MirageOS in any contexts. In the case of MirageOS,
+a simple registration of available transmission protocols _via_
+[functoria][functoria] is enough. For a more concrete usage such as the Unix
+usage, a derivation of your protocol with `unix` and a registration by 
+default of some transmission protocols is enough too. The main difference is:
+- one is leaded by arguments of the user (and `functoria`)
+- the second is established by the developer
+
 ## Reverse dependencies
 
 `mimic` must be thought according to who use it. The API is not designed to be
@@ -60,3 +100,4 @@ my lack of English does not help me.
 [tls]: https://github.com/mirleft/ocaml-tls
 [ssh]: https://github.com/mirage/awa-ssh
 [git-unix]: https://github.com/mirage/ocaml-git
+[mirage-flow]: https://github.com/mirage/mirage-flow
