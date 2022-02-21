@@ -110,7 +110,7 @@ module Make (Key_info : KEY_INFO) = struct
 
     let () =
       let[@warning "-3"] uid =
-        Stdlib.Obj.extension_id [%extension_constructor T]
+        Stdlib.Obj.Extension_constructor.id [%extension_constructor T]
       in
       Tbl.add handlers uid handler;
       Hashtbl.add keys uid (Key key)
@@ -139,9 +139,7 @@ module Make (Key_info : KEY_INFO) = struct
 
   let prj t =
     let arr = handlers.Tbl.data in
-    let uid =
-      Stdlib.Obj.((extension_id (extension_constructor t) [@warning "-3"]))
-    in
+    let uid = Stdlib.Obj.Extension_constructor.(id (of_val t)) in
     if handlers.Tbl.last_k == uid then handlers.Tbl.last_v t
     else
       let res = iter t uid arr.(Tbl.hash uid land (Array.length arr - 1)) in
