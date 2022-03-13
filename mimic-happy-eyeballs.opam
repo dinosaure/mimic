@@ -1,0 +1,20 @@
+opam-version: "2.0"
+synopsis: "A happy-eyeballs integration into mimic"
+description: "A happy-eyeballs integration into mimic for MirageOS"
+maintainer: ["romain.calascibetta@gmail.com"]
+authors: "Romain Calascibetta"
+license: "ISC"
+homepage: "https://github.com/dinosaure/mimic"
+doc: "https://dinosaure.github.io/mimic/"
+bug-reports: "https://github.com/dinosaure/mimic/issues"
+depends: [
+  "ocaml" {>= "4.08.0"}
+  "dune" {>= "2.8"}
+  "mimic"
+  "happy-eyeballs-mirage"
+]
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+]
+dev-repo: "git+https://github.com/dinosaure/mimic.git"
