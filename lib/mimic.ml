@@ -1,5 +1,4 @@
 type 'a info = { name : string; root : root }
-
 and root = Root of int option | Value
 
 let pp_info ppf { name; root } =
