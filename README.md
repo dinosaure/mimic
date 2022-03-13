@@ -67,6 +67,54 @@ default of some transmission protocols is enough too. The main difference is:
 - one is leaded by arguments of the user (and `functoria`)
 - the second is established by the developer
 
+### The result of the mimic's usage
+
+More practically, in the MirageOS world, a _device_ **can not** provide _via_
+its interface the `connect` function but it must implement it let write the
+`functoria` glue to to let it to call the `connect` function with available
+arguments (from the command-line).
+
+For instance, a device can be described with this interface:
+```ocaml
+module type S = sig
+  type t
+
+  val read : t -> buffer
+  val write : t -> buffer -> unit
+end
+```
+
+And its implementation can be described with:
+```ocaml
+module TCP : sig
+  include S
+
+  val connect : ipv4 -> t
+end
+```
+
+That mostly mean that, inside the `unikernel.ml` which is your application, you
+don't have an access to the `connect` function:
+```ocaml
+module Make (My_device : Device.S) = struct
+  let start (t : My_device.t) =
+    ...
+end
+```
+
+A _hot-connect_ can not be available into the interface for a specific reason:
+the abstraction. Arguments required to `connect`/allocate a resource which
+represents our device depend on the implementation. As we said earlier,
+`ocaml-tls` expects a `Tls.Config.client` where `Lwt_ssl` expects an
+`Ssl.context`. It can be difficult to shape these values into an ultimate type
+(which is, of course, non-exhaustive from possible TLS implementations).
+
+Mimic wants to provide this _hot-connect_ function into your application
+(inside the `unikernel.ml`) without a static dependency to `ocaml-tls` or
+`lwt_ssl` _à priori_. Then, the `functoria`/`mirage` tool will choose right
+dependency according to the command-line invokation and produce the glue needed
+to be able to _hot-connect_ a TLS connection over TCP/IP.
+
 ## Reverse dependencies
 
 `mimic` must be thought according to who use it. The API is not designed to be
