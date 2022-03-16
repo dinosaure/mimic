@@ -127,9 +127,7 @@ struct
   let pp_write_error : write_error Fmt.t =
    fun ppf `Closed -> Fmt.string ppf "Connection closed by peer"
 
-  type flow = Edn.t
-
-  and endpoint = Edn.t
+  type flow = Edn.t and endpoint = Edn.t
 
   let connect (edn : endpoint) = Lwt.return_ok edn
   let read _ = Lwt.return_ok (`Data Cstruct.empty)
