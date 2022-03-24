@@ -1,3 +1,9 @@
+### 0.0.5 (2022-03-24) Paris - France
+
+* Add support of OCaml 5.00.0 (#10, @dinosaure)
+* Add `happy-eyeballs` device for MirageOS 4 (#11, @dinosaure)
+* Add `{= version}` constraint on `mimic-happy-eyeballs` (@hannesm, #12)
+
 ### 0.0.4 (2021-08-12) Paris - France
 
 - Use `Cstruct.length` instead of `Cstruct.len` (@dinosaure, #2)
