@@ -237,7 +237,7 @@ let rec getline flow queue = match line_of_queue queue with
     Mimic.read flow >>= function
     | Ok `Eof -> Lwt.return_ok `Close
     | Ok (`Data v) ->
-      Ke.Rke.N.push queue ~blit ~length:Cstruct.lne ~off:0 v ;
+      Ke.Rke.N.push queue ~blit ~length:Cstruct.length ~off:0 v ;
       getline flow queue
     | Error err -> Lwt.return_error (R.msgf "%a" Mimic.pp_error err)
 
