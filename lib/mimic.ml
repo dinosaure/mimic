@@ -98,6 +98,16 @@ let fold value args ~k ctx =
   | Some lst -> Hmap.add value (lst @ [ Fun (args, k) ]) ctx
   | None -> Hmap.add value [ Fun (args, k) ] ctx
 
+let replace value v ctx =
+  match Hmap.find value ctx with
+  | None -> Hmap.add value [ Val v ] ctx
+  | Some lst ->
+    let lst = List.fold_left (fun acc -> function
+      | Value.Fun _ as v -> v :: acc
+      | Value.Val _ -> acc) [] lst in
+    let lst = List.rev lst in (* XXX(dinosaure): keep the order! *)
+    Hmap.add value (Val v :: lst) ctx
+
 (***** Mirage_flow.S part *****)
 
 module Implicit0 = Implicit.Make (struct

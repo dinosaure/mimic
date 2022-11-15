@@ -38,6 +38,10 @@ val add : 'edn value -> 'edn -> ctx -> ctx
 val get : 'edn value -> ctx -> 'edn option
 (** [get w ctx] is the value of [w]'s binding in [ctx], if any. *)
 
+val replace : 'edn value -> 'edn -> ctx -> ctx
+(** [replace w v ctx] replaces the value of [w] by [v] if it exists
+    or bound [w] to [v]. *)
+
 val fold : 'edn value -> ('k, 'edn option Lwt.t) Fun.args -> k:'k -> ctx -> ctx
 val merge : ctx -> ctx -> ctx
 
