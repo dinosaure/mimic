@@ -102,11 +102,16 @@ let replace value v ctx =
   match Hmap.find value ctx with
   | None -> Hmap.add value [ Val v ] ctx
   | Some lst ->
-    let lst = List.fold_left (fun acc -> function
-      | Value.Fun _ as v -> v :: acc
-      | Value.Val _ -> acc) [] lst in
-    let lst = List.rev lst in (* XXX(dinosaure): keep the order! *)
-    Hmap.add value (Val v :: lst) ctx
+      let lst =
+        List.fold_left
+          (fun acc -> function
+            | Value.Fun _ as v -> v :: acc
+            | Value.Val _ -> acc)
+          [] lst
+      in
+      let lst = List.rev lst in
+      (* XXX(dinosaure): keep the order! *)
+      Hmap.add value (Val v :: lst) ctx
 
 (***** Mirage_flow.S part *****)
 
