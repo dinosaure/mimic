@@ -1,3 +1,9 @@
+### 0.0.6 (2022-11-29) Paris - France
+
+* Fix typo on documentation (2fac4cc, @dinosaure)
+* Add `replace` function (#14, @dinosaure)
+* Update to `ocamlformat.0.23.0` (#15, @dinosaure)
+
 ### 0.0.5 (2022-03-24) Paris - France
 
 * Add support of OCaml 5.00.0 (#10, @dinosaure)
