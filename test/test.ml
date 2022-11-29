@@ -221,11 +221,9 @@ let test_topological_sort =
     "res1" res1 (Ok (Protocol_string.T "5"));
   Mimic.resolve ctx >>= fun res2 ->
   Alcotest.(check (result (flow protocol_string) mimic_error))
-    "res2" res2
-    (Error `Not_found);
+    "res2" res2 (Error `Not_found);
   Alcotest.(check (result (flow protocol_int) mimic_error))
-    "res2" res2
-    (Error `Not_found);
+    "res2" res2 (Error `Not_found);
   Lwt.return_unit
 
 let test_priority =
