@@ -2,7 +2,7 @@
  (name mimic)
  (public_name mimic)
  (modules hmap implicit mirage_protocol mimic)
- (libraries logs fmt mirage-flow lwt))
+ (libraries logs mirage-flow lwt))
 
 (documentation
  (package mimic)

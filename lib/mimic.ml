@@ -3,15 +3,15 @@ and root = Root of int option | Value
 
 let pp_info ppf { name; root } =
   match root with
-  | Root (Some p) -> Fmt.pf ppf "<%s:%d>" name p
-  | Root None -> Fmt.pf ppf "<%s>" name
-  | Value -> Fmt.pf ppf "%s" name
+  | Root (Some p) -> Format.fprintf ppf "<%s:%d>" name p
+  | Root None -> Format.fprintf ppf "<%s>" name
+  | Value -> Format.fprintf ppf "%s" name
 
 module Mirage_protocol = Mirage_protocol
 module Info = struct type 'a t = 'a info end
 module Hmap0 = Hmap.Make (Info)
 
-let pp_value ppf value = Fmt.pf ppf "%a" pp_info (Hmap0.Key.info value)
+let pp_value ppf value = Format.fprintf ppf "%a" pp_info (Hmap0.Key.info value)
 let src = Logs.Src.create "mimic" ~doc:"logs mimic's event"
 
 module Log = (val Logs.src_log src : Logs.LOG)
@@ -124,34 +124,35 @@ type error = [ `Msg of string | `Not_found | `Cycle ]
 type write_error = [ `Msg of string | `Closed ]
 
 let pp_error ppf = function
-  | `Msg err -> Fmt.string ppf err
-  | `Not_found -> Fmt.string ppf "No connection found"
-  | `Cycle -> Fmt.string ppf "Context contains a cycle"
+  | `Msg err -> Format.pp_print_string ppf err
+  | `Not_found -> Format.pp_print_string ppf "No connection found"
+  | `Cycle -> Format.pp_print_string ppf "Context contains a cycle"
 
 let pp_write_error ppf = function
-  | `Msg err -> Fmt.string ppf err
-  | `Closed -> Fmt.string ppf "Connection closed by peer"
+  | `Msg err -> Format.pp_print_string ppf err
+  | `Closed -> Format.pp_print_string ppf "Connection closed by peer"
+
+let to_to_string pp v = Format.asprintf "%a" pp v
 
 let read flow =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
   let open Lwt.Infix in
   Flow.read flow
-  >|= Result.map_error (fun fe -> `Msg (Fmt.to_to_string Flow.pp_error fe))
+  >|= Result.map_error (fun fe -> `Msg (to_to_string Flow.pp_error fe))
 
 let write flow cs =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
   let open Lwt.Infix in
   Flow.write flow cs >|= function
   | Error `Closed -> Error `Closed
-  | Error e -> Error (`Msg (Fmt.to_to_string Flow.pp_write_error e))
+  | Error e -> Error (`Msg (to_to_string Flow.pp_write_error e))
   | Ok _ as v -> v
 
 let writev flow css =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
   let open Lwt.Infix in
   Flow.writev flow css
-  >|= Result.map_error (fun fe ->
-          `Msg (Fmt.to_to_string Flow.pp_write_error fe))
+  >|= Result.map_error (fun fe -> `Msg (to_to_string Flow.pp_write_error fe))
 
 let close flow =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
@@ -254,7 +255,8 @@ type edn = Edn : 'edn value * 'edn -> edn
 type fnu = Fun : 'edn value * ('k, 'edn option Lwt.t) Fun.args * 'k -> fnu
 type dep = Dep : 'edn value -> dep
 
-let pp_fnu ppf (Fun (dep, _, _)) = Fmt.pf ppf "%a" pp_info (Hmap0.Key.info dep)
+let pp_fnu ppf (Fun (dep, _, _)) =
+  Format.fprintf ppf "%a" pp_info (Hmap0.Key.info dep)
 
 module Sort = struct
   type t =
@@ -306,6 +308,18 @@ let exists leafs (Dep k) =
   in
   go leafs
 
+let pp_list pp ppf lst =
+  let rec go = function
+    | [] -> ()
+    | [ x ] -> Format.fprintf ppf "%a" pp x
+    | x :: r ->
+        Format.fprintf ppf "%a;@ " pp x;
+        go r
+  in
+  Format.fprintf ppf "@[<1>[";
+  go lst;
+  Format.fprintf ppf "]@]"
+
 let sort bindings =
   let rec go acc later todo progress =
     match todo, later with
@@ -314,11 +328,9 @@ let sort bindings =
     | [], later ->
         (* TODO(dinosaure): check, at least, one root in [acc]. *)
         Log.debug (fun m ->
-            m "Found a solution only for: @[<hov>%a@]."
-              Fmt.(Dump.list Sort.pp)
-              acc);
+            m "Found a solution only for: @[<hov>%a@]." (pp_list Sort.pp) acc);
         Log.debug (fun m ->
-            m "Unsolvable values: @[<hov>%a@]." Fmt.(Dump.list pp_fnu) later);
+            m "Unsolvable values: @[<hov>%a@]." (pp_list pp_fnu) later);
         List.rev acc
     | (Fun (k, args, f) as x) :: xs, _ ->
         let deps = dependencies x bindings in
@@ -328,7 +340,7 @@ let sort bindings =
   in
   let leafs, nodes = partition bindings in
   Log.debug (fun m -> m "Partition done.");
-  Log.debug (fun m -> m "Nodes: @[<hov>%a@]." Fmt.(Dump.list pp_fnu) nodes);
+  Log.debug (fun m -> m "Nodes: @[<hov>%a@]." (pp_list pp_fnu) nodes);
   go leafs [] nodes false
 
 let inf = -1 and sup = 1
@@ -404,7 +416,7 @@ let resolve : ctx -> (flow, [> error ]) result Lwt.t =
   | Ok lst ->
       Log.debug (fun m ->
           m "List of endpoints: @[<hov>%a@]"
-            Fmt.(Dump.list (fun ppf (Edn (k, _)) -> pp_value ppf k))
+            (pp_list (fun ppf (Edn (k, _)) -> pp_value ppf k))
             lst);
       connect lst
   | Error _ as err -> Lwt.return err
