@@ -1,3 +1,6 @@
+module Flow = Flow
+module Protocol = Protocol
+
 type 'a info = { name : string; root : root }
 and root = Root of int option | Value
 
@@ -7,7 +10,6 @@ let pp_info ppf { name; root } =
   | Root None -> Format.fprintf ppf "<%s>" name
   | Value -> Format.fprintf ppf "%s" name
 
-module Mirage_protocol = Mirage_protocol
 module Info = struct type 'a t = 'a info end
 module Hmap0 = Hmap.Make (Info)
 
@@ -51,13 +53,13 @@ end
 and Value : sig
   type 'a elt =
     | Val : 'a -> 'a elt
-    | Fun : ('k, 'a option Lwt.t) Fun.args * 'k -> 'a elt
+    | Fun : ('k, 'a option) Fun.args * 'k -> 'a elt
 
   type 'a t = 'a elt list
 end = struct
   type 'a elt =
     | Val : 'a -> 'a elt
-    | Fun : ('k, 'a option Lwt.t) Fun.args * 'k -> 'a elt
+    | Fun : ('k, 'a option) Fun.args * 'k -> 'a elt
 
   type 'a t = 'a elt list
 end
@@ -116,7 +118,7 @@ let replace value v ctx =
 (***** Mirage_flow.S part *****)
 
 module Implicit0 = Implicit.Make (struct
-  type 'flow t = (module Mirage_flow.S with type flow = 'flow)
+  type 'flow t = (module Flow.S with type flow = 'flow)
 end)
 
 type flow = Implicit0.t = private ..
@@ -136,23 +138,22 @@ let to_to_string pp v = Format.asprintf "%a" pp v
 
 let read flow =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
-  let open Lwt.Infix in
-  Flow.read flow
-  >|= Result.map_error (fun fe -> `Msg (to_to_string Flow.pp_error fe))
+  Result.map_error
+    (fun fe -> `Msg (to_to_string Flow.pp_error fe))
+    (Flow.read flow)
 
 let write flow cs =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
-  let open Lwt.Infix in
-  Flow.write flow cs >|= function
+  match Flow.write flow cs with
   | Error `Closed -> Error `Closed
   | Error e -> Error (`Msg (to_to_string Flow.pp_write_error e))
   | Ok _ as v -> v
 
 let writev flow css =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
-  let open Lwt.Infix in
-  Flow.writev flow css
-  >|= Result.map_error (fun fe -> `Msg (to_to_string Flow.pp_write_error fe))
+  Result.map_error
+    (fun fe -> `Msg (to_to_string Flow.pp_write_error fe))
+    (Flow.writev flow css)
 
 let close flow =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
@@ -166,9 +167,7 @@ type _ pack =
   | Protocol :
       'edn Hmap0.key
       * 'flow Implicit0.witness
-      * (module Mirage_protocol.S
-           with type flow = 'flow
-            and type endpoint = 'edn)
+      * (module Protocol.S with type flow = 'flow and type endpoint = 'edn)
       -> ('edn, 'flow) snd pack
 
 module Implicit1 = Implicit.Make (struct type 'v t = 'v pack end)
@@ -182,7 +181,7 @@ let register :
     type edn flow.
     ?priority:int ->
     name:string ->
-    (module Mirage_protocol.S with type flow = flow and type endpoint = edn) ->
+    (module Protocol.S with type flow = flow and type endpoint = edn) ->
     edn value * (edn, flow) protocol =
  fun ?priority ~name (module Protocol) ->
   let value = Hmap0.Key.create { name; root = Root priority } in
@@ -205,19 +204,18 @@ let repr :
   end in
   (module M)
 
-let rec apply :
-    type k res. ctx -> (k, res option Lwt.t) Fun.args -> k -> res option Lwt.t =
+external reraise : exn -> 'a = "%reraise"
+
+let rec apply : type k res. ctx -> (k, res option) Fun.args -> k -> res option =
  fun ctx args f ->
-  let open Lwt.Infix in
-  let rec go : type k res. ctx -> (k, res) Fun.args -> k -> res Lwt.t =
+  let rec go : type k res. ctx -> (k, res) Fun.args -> k -> res =
    fun ctx -> function
-    | [] -> fun x -> Lwt.return x
-    | Map (args', f') :: tl ->
-        fun f -> go ctx args' f' >>= fun v -> go ctx tl (f v)
-    | Opt value :: tl -> fun f -> find value ctx >>= fun v -> go ctx tl (f v)
+    | [] -> Stdlib.Fun.id
+    | Map (args', f') :: tl -> fun f -> go ctx tl (f (go ctx args' f'))
+    | Opt value :: tl -> fun f -> go ctx tl (f (find value ctx))
     | Dft (v, value) :: tl -> (
         fun f ->
-          find value ctx >>= function
+          match find value ctx with
           | Some v' ->
               Log.debug (fun m ->
                   m "Found a value for the default argument: %a." pp_value value);
@@ -225,34 +223,35 @@ let rec apply :
           | None -> go ctx tl (f v))
     | Req value :: tl -> (
         fun f ->
-          find value ctx >>= function
+          match find value ctx with
           | Some v -> go ctx tl (f v)
-          | None -> Lwt.fail Not_found)
+          | None -> raise Not_found)
   in
-  Lwt.catch (fun () -> go ctx args f >>= fun fiber -> fiber) @@ function
-  | Not_found -> Lwt.return_none
-  | exn -> Lwt.fail exn
+  match go ctx args f with
+  | v -> v
+  | exception Not_found -> None
+  | exception exn -> reraise exn
 
-and find : type a. a value -> ctx -> a option Lwt.t =
+and find : type a. a value -> ctx -> a option =
  fun value ctx ->
   match Hmap.find value ctx with
-  | None | Some [] -> Lwt.return_none
+  | None | Some [] -> None
   | Some lst ->
       (* XXX(dinosaure): priority on values, then we apply the first [Fun] *)
       let rec go fold lst =
         match fold, lst with
-        | None, [] -> Lwt.return_none
+        | None, [] -> None
         | Some (Value.Fun (args, f)), [] -> apply ctx args f
         | Some (Value.Val _), [] -> assert false
         | None, (Value.Fun _ as x) :: r -> go (Some x) r
-        | _, Val v :: _ -> Lwt.return_some v
+        | _, Val v :: _ -> Some v
         | Some _, Fun _ :: r -> go fold r
       in
       go None (List.rev lst)
 (* XXX(dinosaure): the most recent value. *)
 
 type edn = Edn : 'edn value * 'edn -> edn
-type fnu = Fun : 'edn value * ('k, 'edn option Lwt.t) Fun.args * 'k -> fnu
+type fnu = Fun : 'edn value * ('k, 'edn option) Fun.args * 'k -> fnu
 type dep = Dep : 'edn value -> dep
 
 let pp_fnu ppf (Fun (dep, _, _)) =
@@ -261,7 +260,7 @@ let pp_fnu ppf (Fun (dep, _, _)) =
 module Sort = struct
   type t =
     | Val : 'edn value * 'edn -> t
-    | Fun : 'edn value * ('k, 'edn option Lwt.t) Fun.args * 'k -> t
+    | Fun : 'edn value * ('k, 'edn option) Fun.args * 'k -> t
 
   let pp ppf = function
     | Val (k, _) -> pp_info ppf (Hmap0.Key.info k)
@@ -355,34 +354,31 @@ let priority_compare (Edn (k0, _)) (Edn (k1, _)) =
   | Value, Root None -> sup
   | Root None, Value -> inf
 
-let unfold : ctx -> (edn list, [> `Cycle ]) result Lwt.t =
+let unfold : ctx -> (edn list, [> `Cycle ]) result =
  fun ctx ->
-  let open Lwt.Infix in
   let rec go ctx acc : Sort.t list -> _ = function
     | [] ->
         (* XXX(dinosaure): here, we use a stable sort, [List.rev]
          * is needed to keep a certain topological order - see [sort].
          * [stable_sort] keeps this order too. *)
         let acc = List.stable_sort priority_compare (List.rev acc) in
-        Lwt.return_ok acc
+        Ok acc
     | Sort.Val (k, v) :: r ->
         Log.debug (fun m -> m "Return a value %a." pp_value k);
         go ctx (Edn (k, v) :: acc) r
     | Sort.Fun (k, args, f) :: r -> (
         Log.debug (fun m -> m "Apply a function %a." pp_value k);
-        apply ctx args f >>= function
+        match apply ctx args f with
         | Some v -> go (add k v ctx) (Edn (k, v) :: acc) r
         | None -> go ctx acc r)
   in
   let ordered_bindings = sort (Hmap.bindings ctx) in
   go ctx [] ordered_bindings
 
-let flow_of_value :
-    type edn. edn value -> edn -> (flow, [> error ]) result Lwt.t =
+let flow_of_value : type edn. edn value -> edn -> (flow, [> error ]) result =
  fun k v ->
-  let open Lwt.Infix in
   let rec go : Implicit1.pack list -> _ = function
-    | [] -> Lwt.return_error `Not_found
+    | [] -> Error `Not_found
     | Implicit1.Key (Protocol (k', (module Witness), (module Protocol))) :: r
       -> (
         match Hmap0.Key.proof k k' with
@@ -395,8 +391,8 @@ let flow_of_value :
         | Some Teq -> (
             let info = Hmap0.Key.info k in
             Log.debug (fun m -> m "Try to instantiate/connect %a." pp_info info);
-            Protocol.connect v >>= function
-            | Ok flow -> Lwt.return_ok (Witness.T flow)
+            match Protocol.connect v with
+            | Ok flow -> Ok (Witness.T flow)
             | Error _err ->
                 Log.err (fun m ->
                     m "Got an error when we tried to connect with %a." pp_info
@@ -411,26 +407,22 @@ let equal : type a b. a value -> b value -> (a, b) refl option =
  fun a b ->
   match Hmap0.Key.proof a b with Some Teq -> Some Refl | None -> None
 
-let rec connect : edn list -> (flow, [> error ]) result Lwt.t = function
-  | [] -> Lwt.return_error `Not_found
+let rec connect : edn list -> (flow, [> error ]) result = function
+  | [] -> Error `Not_found
   | Edn (k, v) :: r -> (
-      let open Lwt.Infix in
       Log.debug (fun m -> m "Try to instantiate %a." pp_value k);
-      flow_of_value k v >>= function
-      | Ok _ as v -> Lwt.return v
-      | Error _err -> connect r)
+      match flow_of_value k v with Ok _ as v -> v | Error _err -> connect r)
 
-let resolve : ctx -> (flow, [> error ]) result Lwt.t =
+let resolve : ctx -> (flow, [> error ]) result =
  fun ctx ->
-  let open Lwt.Infix in
-  unfold ctx >>= function
+  match unfold ctx with
   | Ok lst ->
       Log.debug (fun m ->
           m "List of endpoints: @[<hov>%a@]"
             (pp_list (fun ppf (Edn (k, _)) -> pp_value ppf k))
             lst);
       connect lst
-  | Error _ as err -> Lwt.return err
+  | Error _ as err -> err
 
 let make ~name = Hmap0.Key.create { name; root = Value }
 let empty = Hmap.empty

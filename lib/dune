@@ -1,8 +1,24 @@
 (library
  (name mimic)
  (public_name mimic)
- (modules hmap implicit mirage_protocol mimic)
- (libraries logs mirage-flow lwt))
+ (modules mirage_protocol mimic)
+ (libraries mimic.implicit mimic.hmap logs mirage-flow lwt))
+
+(library
+ (name mimice)
+ (public_name mimic.e)
+ (modules flow protocol mimice)
+ (libraries mimic.implicit mimic.hmap fmt cstruct logs))
+
+(library
+ (name implicit)
+ (public_name mimic.implicit)
+ (modules implicit))
+
+(library
+ (name hmap)
+ (public_name mimic.hmap)
+ (modules hmap))
 
 (documentation
  (package mimic)
