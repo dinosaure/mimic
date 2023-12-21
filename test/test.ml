@@ -53,6 +53,10 @@ module Memory_flow0 :
     flow.c <- true;
     Lwt.return ()
 
+  let shutdown flow _mode =
+    flow.c <- true;
+    Lwt.return ()
+
   type endpoint = string * bytes
 
   let connect (str, buf) = Lwt.return_ok { i = str; o = buf; p = 0; c = false }
@@ -133,6 +137,7 @@ struct
   let read _ = Lwt.return_ok (`Data Cstruct.empty)
   let write _ _ = Lwt.return_ok ()
   let close _ = Lwt.return_unit
+  let shutdown _ _ = Lwt.return_unit
   let writev _ _ = Lwt.return_ok ()
 end
 

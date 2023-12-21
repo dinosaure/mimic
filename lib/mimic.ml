@@ -154,6 +154,10 @@ let writev flow css =
   Flow.writev flow css
   >|= Result.map_error (fun fe -> `Msg (to_to_string Flow.pp_write_error fe))
 
+let shutdown flow mode =
+  let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
+  Flow.shutdown flow mode
+
 let close flow =
   let (Implicit0.Value (flow, (module Flow))) = Implicit0.prj flow in
   Flow.close flow
