@@ -1,3 +1,9 @@
+### 0.0.7 (2024-04-03) Paris - France
+
+* Delete `mimic_mirage` which is not used (@hannesm, #17)
+* Delete the `fmt` dependency (@dinosaure, #18)
+* Support `mirage-flow.4.0.0` (@hannesm, #20)
+
 ### 0.0.6 (2022-11-29) Paris - France
 
 * Fix typo on documentation (2fac4cc, @dinosaure)
