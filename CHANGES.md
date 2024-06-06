@@ -1,3 +1,7 @@
+### 0.0.8 (2024-05-31) Paris - France
+
+* Upgrade `mimic-happy-eyeballs` with `happy-eyeballs.1.1.0` (@dinosaure, #22)
+
 ### 0.0.7 (2024-04-03) Paris - France
 
 * Delete `mimic_mirage` which is not used (@hannesm, #17)
