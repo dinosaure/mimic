@@ -30,7 +30,8 @@ end
     user. *)
 module Make
     (Stack : Tcpip.Stack.V4V6)
-    (Happy_eyeballs : Happy_eyeballs_mirage.S with type flow = Stack.TCP.flow) : sig
+    (Happy_eyeballs : Happy_eyeballs_mirage.S with type flow = Stack.TCP.flow)
+    (_ : Dns_client_mirage.S) : sig
   include S with type t = Happy_eyeballs.t and type flow = Stack.TCP.flow
 
   val connect : t -> Mimic.ctx Lwt.t
