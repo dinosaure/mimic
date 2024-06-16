@@ -1,4 +1,4 @@
 (library
  (name mimic_happy_eyeballs)
  (public_name mimic-happy-eyeballs)
- (libraries happy-eyeballs-mirage mimic))
+ (libraries dns-client-mirage happy-eyeballs-mirage mimic))
