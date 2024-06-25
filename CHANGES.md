@@ -1,3 +1,8 @@
+### 0.0.9 (2024-06-16) Osaka - Japon
+
+* Re-introduce the DNS stack into mimic to be able to resolve domain-names
+  (@dinosaure, @hannesm, #24, #26, #28)
+
 ### 0.0.8 (2024-05-31) Paris - France
 
 * Upgrade `mimic-happy-eyeballs` with `happy-eyeballs.1.1.0` (@dinosaure, #22)
