@@ -15,7 +15,7 @@ let pp_value ppf value = Format.fprintf ppf "%a" pp_info (Hmap0.Key.info value)
 let src = Logs.Src.create "mimic" ~doc:"logs mimic's event"
 
 module Log = (val Logs.src_log src : Logs.LOG)
-module ProtoLog = (val (Logs.(src_log (Src.create "mimic-protocol" ~doc:"Mimic protocol errors"))) : Logs.LOG)
+module Proto_log = (val (Logs.(src_log (Src.create "mimic-protocol" ~doc:"Mimic protocol errors"))) : Logs.LOG)
 
 module rec Fun : sig
   type ('k, 'res) args =
@@ -396,7 +396,7 @@ let flow_of_value :
             Protocol.connect v >>= function
             | Ok flow -> Lwt.return_ok (Witness.T flow)
             | Error err ->
-              ProtoLog.debug (fun m -> m "%a: %a" pp_value k' Protocol.pp_write_error err);
+              Proto_log.debug (fun m -> m "%a: %a" pp_value k' Protocol.pp_write_error err);
               go r))
   in
   go (Implicit1.bindings ())
