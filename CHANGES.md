@@ -1,3 +1,8 @@
+### 0.0.10 (2026-07-14) Paris - France
+
+- Better errors when we try to instantiate a protocol (@reynir, @dinosaure, #31)
+- Update OPAM file (with `x-maintenance-intent`) (@dinosaure, #29)
+
 ### 0.0.9 (2024-06-16) Osaka - Japon
 
 * Re-introduce the DNS stack into mimic to be able to resolve domain-names
