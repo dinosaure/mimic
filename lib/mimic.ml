@@ -397,7 +397,15 @@ let flow_of_value :
             | Ok flow -> Lwt.return_ok (Witness.T flow)
             | Error err ->
               Proto_log.debug (fun m -> m "%a: %a" pp_value k' Protocol.pp_write_error err);
-              go r))
+              go r >>= function
+              | Error `Not_found ->
+                Lwt.return_error (`Msg (Format.asprintf "%a: %a"
+                                          pp_value k' Protocol.pp_write_error err))
+              | Error `Msg e ->
+                Lwt.return_error
+                  (`Msg (Format.asprintf "%a: %a; %s"
+                           pp_value k' Protocol.pp_write_error err e))
+              | Error `Cycle | Ok _ as r -> Lwt.return r))
   in
   go (Implicit1.bindings ())
 
