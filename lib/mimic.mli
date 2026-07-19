@@ -39,8 +39,8 @@ val get : 'edn value -> ctx -> 'edn option
 (** [get w ctx] is the value of [w]'s binding in [ctx], if any. *)
 
 val replace : 'edn value -> 'edn -> ctx -> ctx
-(** [replace w v ctx] replaces the value of [w] by [v] if it exists
-    or bound [w] to [v]. *)
+(** [replace w v ctx] replaces the value of [w] by [v] if it exists or bound [w]
+    to [v]. *)
 
 val fold : 'edn value -> ('k, 'edn option Lwt.t) Fun.args -> k:'k -> ctx -> ctx
 val merge : ctx -> ctx -> ctx
@@ -67,13 +67,12 @@ val register :
     {i via} log outputs.
 
     [register] returns 2 values:
-    - a {i witness} as the required value to initiate a transmission {i via}
-      the given [Protocol] implementation
+    - a {i witness} as the required value to initiate a transmission {i via} the
+      given [Protocol] implementation
     - a {!type:protocol} which can help the end-user to destruct a {!type:flow}
       to its structural type {i via} {!val:repr}. *)
 
-module type REPR = sig
-  type t type flow += (* XXX(dinosaure): private? *) T of t
+module type REPR = sig type t type flow += (* XXX(dinosaure): private? *) T of t
 end
 
 val repr : ('edn, 'flow) protocol -> (module REPR with type t = 'flow)
@@ -101,8 +100,7 @@ type edn =
 type (_, _) refl = Refl : ('a, 'a) refl
 
 val equal : 'a value -> 'b value -> ('a, 'b) refl option
-(** [equal a b] returns a proof that [a] and [b] are
-    {i structurally} equal. *)
+(** [equal a b] returns a proof that [a] and [b] are {i structurally} equal. *)
 
 val unfold : ctx -> (edn list, [> `Cycle ]) result Lwt.t
 (** [unfold ctx] applies any functions available into the given [ctx] and
@@ -123,13 +121,8 @@ val unfold : ctx -> (edn list, [> `Cycle ]) result Lwt.t
     ]} *)
 
 val connect : edn list -> (flow, [> error ]) result Lwt.t
-(** [connect values] tries to instantiate a {!type:flow} from given [values]
-    and registered protocols (see {!val:register}). *)
+(** [connect values] tries to instantiate a {!type:flow} from given [values] and
+    registered protocols (see {!val:register}). *)
 
-module Merge (A : sig
-  val ctx : ctx
-end) (B : sig
-  val ctx : ctx
-end) : sig
-  val ctx : ctx
-end
+module Merge (A : sig val ctx : ctx end) (B : sig val ctx : ctx end) : sig
+  val ctx : ctx end

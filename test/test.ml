@@ -119,10 +119,7 @@ let test_output_string =
   Alcotest.(check string) "buf" (Bytes.to_string buf) "Hello World!";
   Lwt.return_unit
 
-module Fake (Edn : sig
-  type t
-end) =
-struct
+module Fake (Edn : sig type t end) = struct
   type error = |
   type write_error = [ `Closed ]
 
@@ -156,8 +153,8 @@ let edn_float, protocol_float =
 
 module Protocol_float = (val Mimic.repr protocol_float)
 
-let flow :
-    type edn flow. (edn, flow) Mimic.protocol -> Mimic.flow Alcotest.testable =
+let flow : type edn flow.
+    (edn, flow) Mimic.protocol -> Mimic.flow Alcotest.testable =
  fun protocol ->
   let module Repr = (val Mimic.repr protocol) in
   let equal a b = match a, b with Repr.T a, Repr.T b -> a = b | _ -> false in

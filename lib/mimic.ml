@@ -15,7 +15,10 @@ let pp_value ppf value = Format.fprintf ppf "%a" pp_info (Hmap0.Key.info value)
 let src = Logs.Src.create "mimic" ~doc:"logs mimic's event"
 
 module Log = (val Logs.src_log src : Logs.LOG)
-module Proto_log = (val (Logs.(src_log (Src.create "mimic-protocol" ~doc:"Mimic protocol errors"))) : Logs.LOG)
+
+module Proto_log =
+  (val Logs.(src_log (Src.create "mimic-protocol" ~doc:"Mimic protocol errors"))
+      : Logs.LOG)
 
 module rec Fun : sig
   type ('k, 'res) args =
@@ -69,8 +72,7 @@ type ctx = Hmap.t
 type 'edn value = 'edn Hmap0.key
 
 let merge ctx0 ctx1 =
-  let f :
-      type a.
+  let f : type a.
       a value -> a Value.t option -> a Value.t option -> a Value.t option =
    fun _k lst0 lst1 ->
     match lst0, lst1 with
@@ -80,12 +82,7 @@ let merge ctx0 ctx1 =
   in
   Hmap.merge { f } ctx0 ctx1
 
-module Merge (A : sig
-  val ctx : ctx
-end) (B : sig
-  val ctx : ctx
-end) =
-struct
+module Merge (A : sig val ctx : ctx end) (B : sig val ctx : ctx end) = struct
   let ctx = merge A.ctx B.ctx
 end
 
@@ -106,8 +103,7 @@ let replace value v ctx =
       let lst =
         List.fold_left
           (fun acc -> function
-            | Value.Fun _ as v -> v :: acc
-            | Value.Val _ -> acc)
+            | Value.Fun _ as v -> v :: acc | Value.Val _ -> acc)
           [] lst
       in
       let lst = List.rev lst in
@@ -165,7 +161,8 @@ let close flow =
 
 (***** Protocol (Mirage_flow.S + connect) part *****)
 
-type ('edn, 'flow) snd = Snd : 'flow -> ('edn, 'flow) snd [@@warning "-37"]
+type ('edn, 'flow) snd = Snd : 'flow -> ('edn, 'flow) snd
+[@@warning "-unused-constructor"]
 
 type _ pack =
   | Protocol :
@@ -183,8 +180,7 @@ type ('edn, 'flow) protocol = {
   protocol : ('edn, 'flow) snd Implicit1.witness;
 }
 
-let register :
-    type edn flow.
+let register : type edn flow.
     ?priority:int ->
     name:string ->
     (module Mirage_protocol.S with type flow = flow and type endpoint = edn) ->
@@ -195,12 +191,11 @@ let register :
   let protocol = Implicit1.inj (Protocol (value, flow, (module Protocol))) in
   value, { flow; protocol }
 
-module type REPR = sig
-  type t type flow += (* XXX(dinosaure): private? *) T of t
+module type REPR = sig type t type flow += (* XXX(dinosaure): private? *) T of t
 end
 
-let repr :
-    type edn flow. (edn, flow) protocol -> (module REPR with type t = flow) =
+let repr : type edn flow.
+    (edn, flow) protocol -> (module REPR with type t = flow) =
  fun { flow; _ } ->
   let (module Witness) = flow in
   let module M = struct
@@ -210,29 +205,30 @@ let repr :
   end in
   (module M)
 
-let rec apply :
-    type k res. ctx -> (k, res option Lwt.t) Fun.args -> k -> res option Lwt.t =
+let rec apply : type k res.
+    ctx -> (k, res option Lwt.t) Fun.args -> k -> res option Lwt.t =
  fun ctx args f ->
   let open Lwt.Infix in
   let rec go : type k res. ctx -> (k, res) Fun.args -> k -> res Lwt.t =
    fun ctx -> function
-    | [] -> fun x -> Lwt.return x
-    | Map (args', f') :: tl ->
-        fun f -> go ctx args' f' >>= fun v -> go ctx tl (f v)
-    | Opt value :: tl -> fun f -> find value ctx >>= fun v -> go ctx tl (f v)
-    | Dft (v, value) :: tl -> (
-        fun f ->
-          find value ctx >>= function
-          | Some v' ->
-              Log.debug (fun m ->
-                  m "Found a value for the default argument: %a." pp_value value);
-              go ctx tl (f v')
-          | None -> go ctx tl (f v))
-    | Req value :: tl -> (
-        fun f ->
-          find value ctx >>= function
-          | Some v -> go ctx tl (f v)
-          | None -> Lwt.fail Not_found)
+     | [] -> fun x -> Lwt.return x
+     | Map (args', f') :: tl ->
+         fun f -> go ctx args' f' >>= fun v -> go ctx tl (f v)
+     | Opt value :: tl -> fun f -> find value ctx >>= fun v -> go ctx tl (f v)
+     | Dft (v, value) :: tl -> (
+         fun f ->
+           find value ctx >>= function
+           | Some v' ->
+               Log.debug (fun m ->
+                   m "Found a value for the default argument: %a." pp_value
+                     value);
+               go ctx tl (f v')
+           | None -> go ctx tl (f v))
+     | Req value :: tl -> (
+         fun f ->
+           find value ctx >>= function
+           | Some v -> go ctx tl (f v)
+           | None -> Lwt.fail Not_found)
   in
   Lwt.catch (fun () -> go ctx args f >>= fun fiber -> fiber) @@ function
   | Not_found -> Lwt.return_none
@@ -295,11 +291,11 @@ let exists k bindings =
 let dependencies (Fun (_, args, _)) bindings =
   let rec go : type k r. _ -> (k, r) Fun.args -> _ =
    fun acc -> function
-    | Fun.Req dep :: r -> go (Dep dep :: acc) r
-    | Fun.Opt dep :: r when exists dep bindings -> go (Dep dep :: acc) r
-    | Fun.Dft (_, dep) :: r when exists dep bindings -> go (Dep dep :: acc) r
-    | _ :: r -> go acc r
-    | [] -> List.rev acc
+     | Fun.Req dep :: r -> go (Dep dep :: acc) r
+     | Fun.Opt dep :: r when exists dep bindings -> go (Dep dep :: acc) r
+     | Fun.Dft (_, dep) :: r when exists dep bindings -> go (Dep dep :: acc) r
+     | _ :: r -> go acc r
+     | [] -> List.rev acc
   in
   go [] args
 
@@ -382,8 +378,8 @@ let unfold : ctx -> (edn list, [> `Cycle ]) result Lwt.t =
   let ordered_bindings = sort (Hmap.bindings ctx) in
   go ctx [] ordered_bindings
 
-let flow_of_value :
-    type edn. edn value -> edn -> (flow, [> error ]) result Lwt.t =
+let flow_of_value : type edn.
+    edn value -> edn -> (flow, [> error ]) result Lwt.t =
  fun k v ->
   let open Lwt.Infix in
   let rec go : Implicit1.pack list -> _ = function
@@ -396,8 +392,9 @@ let flow_of_value :
             Protocol.connect v >>= function
             | Ok flow -> Lwt.return_ok (Witness.T flow)
             | Error err ->
-              Proto_log.debug (fun m -> m "%a: %a" pp_value k' Protocol.pp_write_error err);
-              go r))
+                Proto_log.debug (fun m ->
+                    m "%a: %a" pp_value k' Protocol.pp_write_error err);
+                go r))
   in
   go (Implicit1.bindings ())
 
