@@ -6,23 +6,19 @@
 
 (** Heterogeneous value maps.
 
-    {e %%VERSION%% - {{:%%PKG_HOMEPAGE%% }homepage}} *)
+    {e %%VERSION%% - {{:%%PKG_HOMEPAGE%%}homepage}} *)
 
 (** {1:func Functorial interface}
 
-    The functorial interface allows to associate more information to the
-    keys. For example a key name or a key value pretty-printer. *)
+    The functorial interface allows to associate more information to the keys.
+    For example a key name or a key value pretty-printer. *)
 
 (** The type for key information. *)
-module type KEY_INFO = sig
-  type 'a t
-  (** The type for key information. *)
-end
+module type KEY_INFO = sig type 'a t
+                           (** The type for key information. *) end
 
-module type VALUE_INFO = sig
-  type 'a t
-  (** The type for value information. *)
-end
+module type VALUE_INFO = sig type 'a t
+                             (** The type for value information. *) end
 
 type ('a, 'b) teq = Teq : ('a, 'a) teq
 
@@ -48,8 +44,8 @@ module type S = sig
 
     (** {1:exists Existential keys}
 
-        Exisential keys allow to compare keys. This can be useful for
-        functions like {!filter}. *)
+        Exisential keys allow to compare keys. This can be useful for functions
+        like {!filter}. *)
 
     type t
     (** The type for existential keys. *)
@@ -115,8 +111,8 @@ module type S = sig
     (** [for_all p m] is [true] iff all bindings of [m] satisfy [p]. *)
 
     val exists : (binding -> bool) -> t -> bool
-    (** [exists p m] is [true] iff there exists a bindings of [m] that
-        satisfies [p]. *)
+    (** [exists p m] is [true] iff there exists a bindings of [m] that satisfies
+        [p]. *)
 
     val filter : (binding -> bool) -> t -> t
     (** [filter p m] are the bindings of [m] that satisfy [p]. *)
@@ -142,8 +138,8 @@ module type S = sig
   end
 end
 
-(** Functor for heterogeneous maps whose keys hold information
-    of type [Key_info.t] *)
+(** Functor for heterogeneous maps whose keys hold information of type
+    [Key_info.t] *)
 module Make : functor (Key_info : KEY_INFO) ->
   S with type 'a Key.info = 'a Key_info.t
 

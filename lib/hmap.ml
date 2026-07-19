@@ -9,9 +9,7 @@
 
 module Tid = struct type _ t = .. end
 
-module type Tid = sig
-  type t type _ Tid.t += Tid : t Tid.t
-end
+module type Tid = sig type t type _ Tid.t += Tid : t Tid.t end
 
 type 'a tid = (module Tid with type t = 'a)
 
@@ -29,13 +27,8 @@ let eq : type r s. r tid -> s tid -> (r, s) teq option =
 
 (* Heterogeneous maps *)
 
-module type KEY_INFO = sig
-  type 'a t
-end
-
-module type VALUE_INFO = sig
-  type 'a t
-end
+module type KEY_INFO = sig type 'a t end
+module type VALUE_INFO = sig type 'a t end
 
 module type S = sig
   type 'a key

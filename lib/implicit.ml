@@ -74,9 +74,7 @@ module Tbl = struct
     if t.size > Array.length t.data lsl 1 then resize t
 end
 
-module type KEY_INFO = sig
-  type 'a t
-end
+module type KEY_INFO = sig type 'a t end
 
 module Make (Key_info : KEY_INFO) = struct
   type t = ..

@@ -1,6 +1,4 @@
-module type KEY_INFO = sig
-  type 'a t
-end
+module type KEY_INFO = sig type 'a t end
 
 module Make (Key_info : KEY_INFO) : sig
   type t = private ..
