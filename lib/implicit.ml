@@ -107,7 +107,7 @@ module Make (Key_info : KEY_INFO) = struct
     let handler = function T a -> Value (a, key) | _ -> raise Not_found
 
     let () =
-      let[@warning "-3"] uid =
+      let[@alert "-deprecated"] uid =
         Stdlib.Obj.Extension_constructor.id [%extension_constructor T]
       in
       Tbl.add handlers uid handler;
@@ -123,12 +123,15 @@ module Make (Key_info : KEY_INFO) = struct
 
   (* XXX(dinosaure): we ensure that a value [t : t] must have an implementation
    * availble into [handlers]. By this way,
-   * [let[@warning "-8"] Tbl.Cons _ = lst in] is safe where we must find an
-   * implementation.
+   * [let[@warning "-partial-match"] Tbl.Cons _ = lst in] is safe where we must
+   * find an implementation.
    *)
 
   let rec iter t uid lst =
-    let[@warning "-8"] (Tbl.Cons { key = k; data = f; next = r; _ }) = lst in
+    let[@warning "-partial-match"] (Tbl.Cons { key = k; data = f; next = r; _ })
+        =
+      lst
+    in
     try
       if uid <> k then raise_notrace Not_found;
       handlers.Tbl.last_v <- f;

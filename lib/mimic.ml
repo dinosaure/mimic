@@ -161,7 +161,8 @@ let close flow =
 
 (***** Protocol (Mirage_flow.S + connect) part *****)
 
-type ('edn, 'flow) snd = Snd : 'flow -> ('edn, 'flow) snd [@@warning "-37"]
+type ('edn, 'flow) snd = Snd : 'flow -> ('edn, 'flow) snd
+[@@warning "-unused-constructor"]
 
 type _ pack =
   | Protocol :
